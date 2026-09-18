@@ -1,0 +1,1 @@
+# Sistema-Edge-Integrado-para-Monitoramento-de-Vegeta-o
