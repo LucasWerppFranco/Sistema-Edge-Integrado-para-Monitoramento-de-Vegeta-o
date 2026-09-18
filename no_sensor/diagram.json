@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "author": "Lucas Franco",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-hc-sr04", "id": "sonar", "top": -180, "left": -220, "attrs": { "distance": "82" } },
+    { "type": "wokwi-dht22", "id": "dht1", "top": -230, "left": 60, "attrs": { "temperature": "25", "humidity": "65" } },
+    { "type": "wokwi-photoresistor-sensor", "id": "ldr1", "top": -40, "left": -330, "attrs": { "lux": "50000" } },
+    { "type": "wokwi-lcd1602", "id": "lcd1", "top": 20, "left": 180, "attrs": { "pins": "i2c" } },
+    { "type": "wokwi-led", "id": "led1", "top": 80, "left": -180, "attrs": { "color": "red" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": 170, "left": -195, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-slide-switch", "id": "link", "top": 230, "left": -90, "attrs": { "bounce": "0" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "sonar:VCC", "esp:5V", "red", [] ],
+    [ "sonar:GND", "esp:GND.1", "black", [] ],
+    [ "sonar:TRIG", "esp:5", "orange", [] ],
+    [ "sonar:ECHO", "esp:18", "purple", [] ],
+    [ "dht1:VCC", "esp:3V3", "red", [] ],
+    [ "dht1:GND", "esp:GND.1", "black", [] ],
+    [ "dht1:SDA", "esp:4", "green", [] ],
+    [ "ldr1:VCC", "esp:3V3", "red", [] ],
+    [ "ldr1:GND", "esp:GND.1", "black", [] ],
+    [ "ldr1:AO", "esp:34", "green", [] ],
+    [ "lcd1:VCC", "esp:5V", "red", [] ],
+    [ "lcd1:GND", "esp:GND.1", "black", [] ],
+    [ "lcd1:SDA", "esp:21", "green", [] ],
+    [ "lcd1:SCL", "esp:22", "blue", [] ],
+    [ "led1:A", "esp:14", "green", [] ],
+    [ "led1:C", "r1:1", "gray", [] ],
+    [ "r1:2", "esp:GND.1", "black", [] ],
+    [ "link:1", "esp:3V3", "red", [] ],
+    [ "link:2", "esp:13", "yellow", [] ],
+    [ "link:3", "esp:GND.1", "black", [] ]
+  ],
+  "dependencies": {}
+}

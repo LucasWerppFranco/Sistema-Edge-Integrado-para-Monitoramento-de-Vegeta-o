@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "author": "Lucas Franco",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-lcd2004", "id": "lcd1", "top": 0, "left": 180, "attrs": { "pins": "i2c" } },
+    { "type": "wokwi-led", "id": "ledCorte", "top": 60, "left": -160, "attrs": { "color": "red" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": 150, "left": -175, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-led", "id": "ledFalha", "top": 60, "left": -100, "attrs": { "color": "yellow" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": 150, "left": -115, "rotate": 90, "attrs": { "value": "220" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "lcd1:VCC", "esp:5V", "red", [] ],
+    [ "lcd1:GND", "esp:GND.1", "black", [] ],
+    [ "lcd1:SDA", "esp:21", "green", [] ],
+    [ "lcd1:SCL", "esp:22", "blue", [] ],
+    [ "ledCorte:A", "esp:14", "green", [] ],
+    [ "ledCorte:C", "r1:1", "gray", [] ],
+    [ "r1:2", "esp:GND.1", "black", [] ],
+    [ "ledFalha:A", "esp:27", "green", [] ],
+    [ "ledFalha:C", "r2:1", "gray", [] ],
+    [ "r2:2", "esp:GND.1", "black", [] ]
+  ],
+  "dependencies": {}
+}
