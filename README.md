@@ -13,9 +13,8 @@ Sensor → Nó Edge → Processamento Local → Comunicação → Resultado
 | Gateway (ESP32) | [`gateway/`](gateway/) | Agrega os pontos, detecta falhas e prioriza o trecho |
 
 Simulação no Wokwi: _(colar aqui os links dos 3 projetos)_
-- Ponto A: …
-- Ponto B: …
-- Gateway: …
+- (Ponto A/B)[https://wokwi.com/projects/475536198822428673]
+- (Gateway)[https://wokwi.com/projects/475537358678725633]
 
 ---
 
