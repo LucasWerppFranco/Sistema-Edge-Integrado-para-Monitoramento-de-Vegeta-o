@@ -14,7 +14,11 @@ Sensor → Nó Edge → Processamento Local → Comunicação → Resultado
 
 Video demonstrativo
 
-[![Demonstração do projeto](https://img.youtube.com/vi/U1Gvs2vLDC8/hqdefault.jpg)](https://youtu.be/U1Gvs2vLDC8)
+<p align="center">
+  <a href="https://youtu.be/U1Gvs2vLDC8">
+    <img src="https://img.youtube.com/vi/U1Gvs2vLDC8/hqdefault.jpg" width="700">
+  </a>
+</p>
 
 Simulação no Wokwi: _(colar aqui os links dos 3 projetos)_
 - [Ponto A/B](https://wokwi.com/projects/475536198822428673)
