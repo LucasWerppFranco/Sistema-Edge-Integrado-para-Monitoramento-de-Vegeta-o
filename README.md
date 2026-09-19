@@ -12,6 +12,10 @@ Sensor → Nó Edge → Processamento Local → Comunicação → Resultado
 | Ponto B (ESP32) | [`no_sensor/`](no_sensor/) com `NODE_ID "B"` | Mesmo firmware, outro ponto da rodovia |
 | Gateway (ESP32) | [`gateway/`](gateway/) | Agrega os pontos, detecta falhas e prioriza o trecho |
 
+Video demonstrativo
+
+[![Demonstração do projeto](https://img.youtube.com/vi/f6W5ncmvmhk/hqdefault.jpg)](https://www.youtube.com/shorts/f6W5ncmvmhk)
+
 Simulação no Wokwi: _(colar aqui os links dos 3 projetos)_
 - [Ponto A/B](https://wokwi.com/projects/475536198822428673)
 - [Gateway](https://wokwi.com/projects/475537358678725633)
