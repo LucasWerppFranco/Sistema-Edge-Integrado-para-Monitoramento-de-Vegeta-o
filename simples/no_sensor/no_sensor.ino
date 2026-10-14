@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <Preferences.h>
@@ -8,7 +9,15 @@
 
 #define NODE_ID "A"
 
-#define BROKER      "broker.hivemq.com"
+const char* ssid = "Mkdir";
+const char* password = "";   // preencher antes de gravar
+
+// MQTT Broker
+const char* mqtt_broker = "broker.hivemq.com";
+const char* mqtt_username = "";
+const char* mqtt_password = "";
+const int mqtt_port = 1883;
+
 #define TOPIC_BASE  "edgeveg-lwf/rodovia"
 #define TOPIC_ESTADO TOPIC_BASE "/ponto" NODE_ID "/estado"
 #define TOPIC_STATUS TOPIC_BASE "/ponto" NODE_ID "/status"
@@ -33,6 +42,7 @@ const int FALHAS_MAX   = 3;
 
 const unsigned long LEITURA_MS   = 2000;
 const unsigned long HEARTBEAT_MS = 30000;
+const unsigned long RETENTAR_MS  = 5000;
 
 const float GAMMA = 0.7;
 const float RL10  = 50;
@@ -57,14 +67,19 @@ const int FILA_MAX = 20;
 Leitura fila[FILA_MAX];
 int filaInicio = 0, filaQtd = 0;
 
+// Objetos
 DHT dht(DHT_PIN, DHT22);
-WiFiClient net;
-PubSubClient mqtt(net);
+WiFiClient espClient;
+PubSubClient client(espClient);
 Preferences prefs;
 
 String clientId;
 int falhasSeguidas = 0;
 unsigned long ultimaLeitura = 0, ultimoEnvio = 0, ultimaTentativa = 0;
+
+// Prototipos
+bool connectMQTT();
+void callback(char* topic, byte* payload, unsigned int length);
 
 // ===================== LEITURA DOS SENSORES =====================
 
@@ -156,14 +171,42 @@ int preverDiasParaCorte(float altura, float t, float u, float lux) {
 
 // ===================== COMUNICAÇÃO =====================
 
-bool online() { return mqtt.connected(); }
+bool online() { return client.connected(); }
 
+// Uma tentativa de conexao. Last Will: se o no sumir sem avisar,
+// o broker publica "OFFLINE" por ele e o gateway fica sabendo.
+bool connectMQTT() {
+  client.setServer(mqtt_broker, mqtt_port);
+  client.setCallback(callback);
+
+  if (client.connect(clientId.c_str(), mqtt_username, mqtt_password,
+                     TOPIC_STATUS, 1, true, "OFFLINE")) {
+    Serial.println("Exito na conexao:");
+    Serial.printf("Cliente %s conectado ao broker\n", clientId.c_str());
+    client.publish(TOPIC_STATUS, "ONLINE", true);
+    return 1;
+  }
+  Serial.print("Falha ao conectar: ");
+  Serial.println(client.state());
+  return 0;
+}
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived in topic: ");
+  Serial.println(topic);
+  Serial.print("Message:");
+  for (unsigned int i = 0; i < length; i++) Serial.print((char)payload[i]);
+  Serial.println();
+  Serial.println("-----------------------");
+}
+
+// Payload CSV: id;altura;estado;dias;temp;umid;seq;idade_s
 bool publicar(const Leitura& l, uint32_t idadeS) {
   char msg[96];
   snprintf(msg, sizeof(msg), "%s;%.1f;%s;%d;%.1f;%.0f;%u;%u",
            NODE_ID, isnan(l.altura) ? -1.0 : l.altura, NOME_ESTADO[l.estado],
            l.dias, l.temp, l.umid, (unsigned)l.seq, (unsigned)idadeS);
-  bool ok = mqtt.publish(TOPIC_ESTADO, msg, true);
+  bool ok = client.publish(TOPIC_ESTADO, msg, true);
   if (ok) {
     ultimoEnvio = millis();
     Serial.printf("  [TX] %s -> %s\n", TOPIC_ESTADO, msg);
@@ -192,22 +235,18 @@ void registrarEvento(const Leitura& l) {
   else Serial.printf("  [FILA] sem conexao, evento guardado (%d na fila)\n", filaQtd);
 }
 
+// Reconecta sem travar o loop: o no continua medindo e decidindo offline
 void cuidarDaRede() {
   if (WiFi.status() != WL_CONNECTED) return;
 
-  if (!mqtt.connected()) {
-    if (millis() - ultimaTentativa < 5000) return;
+  if (!client.connected()) {
+    if (millis() - ultimaTentativa < RETENTAR_MS) return;
     ultimaTentativa = millis();
-    if (!mqtt.connect(clientId.c_str(), TOPIC_STATUS, 1, true, "OFFLINE")) {
-      Serial.printf("[REDE] MQTT falhou (rc=%d), tentando de novo em 5 s\n", mqtt.state());
-      return;
-    }
-    mqtt.publish(TOPIC_STATUS, "ONLINE", true);
-    Serial.println("[REDE] MQTT conectado");
+    if (!connectMQTT()) return;
     enviarFila();
     publicar(atual, 0);
   }
-  mqtt.loop();
+  client.loop();
 }
 
 // ===================== AUTOTESTE =====================
@@ -230,7 +269,7 @@ void autoteste() {
 // ===================== SETUP / LOOP =====================
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
@@ -244,9 +283,26 @@ void setup() {
   Serial.printf("[BOOT] Ponto %s | estado restaurado: %s | seq=%u\n",
                 NODE_ID, NOME_ESTADO[atual.estado], (unsigned)atual.seq);
 
-  clientId = String("edgeveg-") + NODE_ID + "-" + String(random(0xffff), HEX);
-  WiFi.begin("Wokwi-GUEST", "", 6);
-  mqtt.setServer(BROKER, 1883);
+  // Conectar
+  WiFi.begin(ssid, password);
+
+  // Aguardando conexao
+  Serial.println();
+  Serial.print("Conectando");
+  for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("WiFi connected");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("WiFi nao conectado: seguindo offline");
+  }
+
+  clientId = String("edgeveg-") + NODE_ID + "-" + WiFi.macAddress();
+  connectMQTT();
 }
 
 void loop() {

@@ -1,15 +1,35 @@
+#include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 
 // ===================== CONFIGURAÇÃO =====================
 
-#define BROKER        "broker.hivemq.com"
+const char* ssid = "Mkdir";
+const char* password = "";   // preencher antes de gravar
+
+// MQTT Broker
+const char* mqtt_broker = "broker.hivemq.com";
+const char* mqtt_username = "";
+const char* mqtt_password = "";
+const int mqtt_port = 1883;
+
 #define TOPIC_BASE    "edgeveg-lwf/rodovia"
 #define TOPIC_RESUMO  TOPIC_BASE "/resumo"
 #define TOPIC_GW      TOPIC_BASE "/gateway/status"
 
+// Tópicos assinados (curinga: serve para qualquer ponto do trecho)
+const char* topic[] = {
+  TOPIC_BASE "/+/estado",
+  TOPIC_BASE "/+/status"
+};
+const int totalTopicos = sizeof(topic) / sizeof(topic[0]);
+
 #define LED_CORTE  14
 #define LED_FALHA  27
+
+const unsigned long RETENTAR_MS = 5000;
+
+// ===================== ESTADO =====================
 
 struct Ponto {
   char id;
@@ -22,13 +42,18 @@ struct Ponto {
 };
 Ponto pontos[] = {{'A'}, {'B'}};
 
-WiFiClient net;
-PubSubClient mqtt(net);
+// Objetos
+WiFiClient espClient;
+PubSubClient client(espClient);
 
 String clientId;
 String resumoPublicado;
 bool reavaliar = true;
 unsigned long ultimaTentativa = 0;
+
+// Prototipos
+bool connectMQTT();
+void callback(char* topic, byte* payload, unsigned int length);
 
 // ===================== RECEPÇÃO =====================
 
@@ -37,17 +62,21 @@ Ponto* buscarPonto(char id) {
   return nullptr;
 }
 
-void aoReceber(char* topic, byte* payload, unsigned int len) {
+void callback(char* topic, byte* payload, unsigned int length) {
   char msg[96];
-  len = min(len, (unsigned int)sizeof(msg) - 1);
-  memcpy(msg, payload, len);
-  msg[len] = 0;
+  length = min(length, (unsigned int)sizeof(msg) - 1);
+  memcpy(msg, payload, length);
+  msg[length] = 0;
+
+  Serial.print("Message arrived in topic: ");
+  Serial.println(topic);
 
   const char* p = strstr(topic, "/ponto");
   Ponto* pt = p ? buscarPonto(p[6]) : nullptr;
   if (!pt) return;
 
   if (strstr(topic, "/status")) {
+    // "OFFLINE" chega pelo Last Will quando o nó cai sem avisar
     pt->online = strcmp(msg, "ONLINE") == 0;
     Serial.printf("[GW] Ponto %c: %s\n", pt->id, msg);
   } else {
@@ -77,6 +106,7 @@ void aoReceber(char* topic, byte* payload, unsigned int len) {
 
 // ===================== DECISÃO DO TRECHO =====================
 
+// Prioridade de atendimento: CORTE > ERRO > ATENCAO > OK
 String calcularResumo() {
   const char* prioridade[] = {"CORTE", "ERRO", "ATENCAO"};
   for (const char* e : prioridade) {
@@ -99,10 +129,11 @@ void avaliarTrecho() {
   digitalWrite(LED_FALHA, algumaFalha);
 
   String resumo = calcularResumo();
-  Serial.printf("[GW] trecho: %s | MQTT %s\n", resumo.c_str(), mqtt.connected() ? "ON" : "OFF");
+  Serial.printf("[GW] trecho: %s | MQTT %s\n", resumo.c_str(), client.connected() ? "ON" : "OFF");
 
-  if (resumo != resumoPublicado && mqtt.connected() &&
-      mqtt.publish(TOPIC_RESUMO, resumo.c_str(), true)) {
+  // Nuvem: só publica quando o resumo muda
+  if (resumo != resumoPublicado && client.connected() &&
+      client.publish(TOPIC_RESUMO, resumo.c_str(), true)) {
     resumoPublicado = resumo;
     Serial.printf("[GW] resumo -> nuvem: %s\n", resumo.c_str());
   }
@@ -110,37 +141,67 @@ void avaliarTrecho() {
 
 // ===================== REDE =====================
 
+// Uma tentativa de conexao, com Last Will do proprio gateway
+bool connectMQTT() {
+  client.setServer(mqtt_broker, mqtt_port);
+  client.setCallback(callback);
+
+  if (!client.connect(clientId.c_str(), mqtt_username, mqtt_password,
+                      TOPIC_GW, 1, true, "OFFLINE")) {
+    Serial.print("Falha ao conectar: ");
+    Serial.println(client.state());
+    return 0;
+  }
+  Serial.println("Exito na conexao:");
+  Serial.printf("Cliente %s conectado ao broker\n", clientId.c_str());
+
+  client.publish(TOPIC_GW, "ONLINE", true);
+  // Os estados são "retained": ao (re)conectar, chega o último de cada ponto
+  for (int i = 0; i < totalTopicos; i++) client.subscribe(topic[i], 1);
+  resumoPublicado = "";
+  reavaliar = true;
+  return 1;
+}
+
 void cuidarDaRede() {
   if (WiFi.status() != WL_CONNECTED) return;
-  if (!mqtt.connected()) {
-    if (millis() - ultimaTentativa < 5000) return;
+
+  if (!client.connected()) {
+    if (millis() - ultimaTentativa < RETENTAR_MS) return;
     ultimaTentativa = millis();
-    if (!mqtt.connect(clientId.c_str(), TOPIC_GW, 1, true, "OFFLINE")) {
-      Serial.printf("[REDE] MQTT falhou (rc=%d); mantendo ultimos estados\n", mqtt.state());
-      return;
-    }
-    mqtt.publish(TOPIC_GW, "ONLINE", true);
-    mqtt.subscribe(TOPIC_BASE "/+/estado", 1);
-    mqtt.subscribe(TOPIC_BASE "/+/status", 1);
-    resumoPublicado = "";
-    Serial.println("[REDE] MQTT conectado, aguardando pontos");
-    reavaliar = true;
+    if (!connectMQTT()) return;
   }
-  mqtt.loop();
+  client.loop();
 }
 
 // ===================== SETUP / LOOP =====================
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   pinMode(LED_CORTE, OUTPUT);
   pinMode(LED_FALHA, OUTPUT);
   Serial.println("[GW] Gateway iniciando");
 
-  clientId = String("edgeveg-gw-") + String(random(0xffff), HEX);
-  WiFi.begin("Wokwi-GUEST", "", 6);
-  mqtt.setServer(BROKER, 1883);
-  mqtt.setCallback(aoReceber);
+  // Conectar
+  WiFi.begin(ssid, password);
+
+  // Aguardando conexao
+  Serial.println();
+  Serial.print("Conectando");
+  for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("WiFi connected");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("WiFi nao conectado: mantendo ultimos estados");
+  }
+
+  clientId = String("edgeveg-gw-") + WiFi.macAddress();
+  connectMQTT();
 }
 
 void loop() {
