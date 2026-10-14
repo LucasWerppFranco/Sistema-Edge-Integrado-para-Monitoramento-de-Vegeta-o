@@ -209,6 +209,11 @@ void setup() {
     Serial.println(WiFi.localIP());
   } else {
     Serial.println("WiFi nao conectado: mantendo ultimos estados");
+    Serial.printf("[REDE] procurei \"%s\"; redes 2.4GHz visiveis:\n", ssid);
+    int n = WiFi.scanNetworks();
+    for (int i = 0; i < n; i++)
+      Serial.printf("  %s  %d dBm  ch%d\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i));
+    if (n == 0) Serial.println("  (nenhuma rede encontrada)");
   }
 
   clientId = String("edgeveg-gw-") + WiFi.macAddress();
