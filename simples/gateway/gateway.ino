@@ -57,6 +57,11 @@ void callback(char* topic, byte* payload, unsigned int length);
 
 // ===================== RECEPÇÃO =====================
 
+const char* estadoRede() {
+  if (WiFi.status() != WL_CONNECTED) return "WIFI-OFF";
+  return client.connected() ? "ONLINE" : "BROKER-OFF";
+}
+
 Ponto* buscarPonto(char id) {
   for (auto& p : pontos) if (p.id == id) return &p;
   return nullptr;
@@ -129,7 +134,7 @@ void avaliarTrecho() {
   digitalWrite(LED_FALHA, algumaFalha);
 
   String resumo = calcularResumo();
-  Serial.printf("[GW] trecho: %s | MQTT %s\n", resumo.c_str(), client.connected() ? "ON" : "OFF");
+  Serial.printf("[GW] trecho: %s | rede %s\n", resumo.c_str(), estadoRede());
 
   // Nuvem: só publica quando o resumo muda
   if (resumo != resumoPublicado && client.connected() &&
@@ -164,7 +169,13 @@ bool connectMQTT() {
 }
 
 void cuidarDaRede() {
-  if (WiFi.status() != WL_CONNECTED) return;
+  if (WiFi.status() != WL_CONNECTED) {
+    if (millis() - ultimaTentativa < RETENTAR_MS) return;
+    ultimaTentativa = millis();
+    Serial.printf("[REDE] sem WiFi (ssid=%s, status=%d), reconectando\n", ssid, WiFi.status());
+    WiFi.reconnect();
+    return;
+  }
 
   if (!client.connected()) {
     if (millis() - ultimaTentativa < RETENTAR_MS) return;

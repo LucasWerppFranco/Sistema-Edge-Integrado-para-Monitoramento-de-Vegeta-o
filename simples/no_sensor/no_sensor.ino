@@ -173,6 +173,11 @@ int preverDiasParaCorte(float altura, float t, float u, float lux) {
 
 bool online() { return client.connected(); }
 
+const char* estadoRede() {
+  if (WiFi.status() != WL_CONNECTED) return "WIFI-OFF";
+  return client.connected() ? "ONLINE" : "BROKER-OFF";
+}
+
 // Uma tentativa de conexao. Last Will: se o no sumir sem avisar,
 // o broker publica "OFFLINE" por ele e o gateway fica sabendo.
 bool connectMQTT() {
@@ -237,7 +242,13 @@ void registrarEvento(const Leitura& l) {
 
 // Reconecta sem travar o loop: o no continua medindo e decidindo offline
 void cuidarDaRede() {
-  if (WiFi.status() != WL_CONNECTED) return;
+  if (WiFi.status() != WL_CONNECTED) {
+    if (millis() - ultimaTentativa < RETENTAR_MS) return;
+    ultimaTentativa = millis();
+    Serial.printf("[REDE] sem WiFi (ssid=%s, status=%d), reconectando\n", ssid, WiFi.status());
+    WiFi.reconnect();
+    return;
+  }
 
   if (!client.connected()) {
     if (millis() - ultimaTentativa < RETENTAR_MS) return;
@@ -335,7 +346,7 @@ void loop() {
 
   Serial.printf("[%s] h=%.1fcm T=%.1f U=%.0f lux=%.0f -> %s | corte em %d d | %s | fila=%d\n",
                 NODE_ID, atual.altura, t, u, lux, NOME_ESTADO[novo], atual.dias,
-                online() ? "ONLINE" : "OFFLINE", filaQtd);
+                estadoRede(), filaQtd);
 
   if (novo != atual.estado) {
     Serial.printf("  [EVENTO] %s -> %s\n", NOME_ESTADO[atual.estado], NOME_ESTADO[novo]);
