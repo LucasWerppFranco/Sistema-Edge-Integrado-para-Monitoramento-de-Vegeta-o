@@ -9,7 +9,7 @@
 
 #define NODE_ID "A"
 
-const char* ssid = "Mkdir";
+const char* ssid = "";       // preencher antes de gravar
 const char* password = "";   // preencher antes de gravar
 
 // MQTT Broker
