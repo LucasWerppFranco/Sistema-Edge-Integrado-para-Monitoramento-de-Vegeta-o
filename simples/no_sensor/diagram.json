@@ -20,41 +20,12 @@
       }
     },
     {
-      "type": "wokwi-dht22",
-      "id": "dht1",
-      "top": -230,
-      "left": 60,
-      "attrs": {
-        "temperature": "25",
-        "humidity": "65"
-      }
-    },
-    {
       "type": "wokwi-photoresistor-sensor",
       "id": "ldr1",
       "top": -40,
       "left": -330,
       "attrs": {
         "lux": "50000"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led1",
-      "top": 80,
-      "left": -180,
-      "attrs": {
-        "color": "red"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r1",
-      "top": 170,
-      "left": -195,
-      "rotate": 90,
-      "attrs": {
-        "value": "220"
       }
     }
   ],
@@ -96,24 +67,6 @@
       []
     ],
     [
-      "dht1:VCC",
-      "esp:3V3",
-      "red",
-      []
-    ],
-    [
-      "dht1:GND",
-      "esp:GND.1",
-      "black",
-      []
-    ],
-    [
-      "dht1:SDA",
-      "esp:4",
-      "green",
-      []
-    ],
-    [
       "ldr1:VCC",
       "esp:3V3",
       "red",
@@ -129,24 +82,6 @@
       "ldr1:AO",
       "esp:34",
       "green",
-      []
-    ],
-    [
-      "led1:A",
-      "esp:14",
-      "green",
-      []
-    ],
-    [
-      "led1:C",
-      "r1:1",
-      "gray",
-      []
-    ],
-    [
-      "r1:2",
-      "esp:GND.1",
-      "black",
       []
     ]
   ],

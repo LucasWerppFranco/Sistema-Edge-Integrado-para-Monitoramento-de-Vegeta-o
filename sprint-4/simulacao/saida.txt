@@ -1,0 +1,171 @@
+SIMULACAO DA LOGICA DO FIRMWARE — entradas injetadas, semente fixa 42
+H_SENSOR=100  LIM_ATENCAO=30  LIM_CORTE=35  HISTERESE=1  FALHAS_MAX=3
+
+========== S1  condicao normal: alvo a 82 cm, luz 48000 lux ==========
+  [A] h=17.6cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=17.8cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.2cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.2cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+
+========== S2  proxima ao limite: alvo a 70 cm (altura 30 = LIM_ATENCAO) ==========
+  [A] h=30.1cm lux=48000 -> ATENCAO | corte em 1 d | ONLINE | fila=0
+    [EVENTO] NORMAL -> ATENCAO
+    [TX] A;30.1;ATENCAO;1;1;0
+  [A] h=29.9cm lux=48000 -> ATENCAO | corte em 2 d | ONLINE | fila=0
+  [A] h=30.4cm lux=48000 -> ATENCAO | corte em 1 d | ONLINE | fila=0
+  [A] h=30.1cm lux=48000 -> ATENCAO | corte em 1 d | ONLINE | fila=0
+  [A] h=29.8cm lux=48000 -> ATENCAO | corte em 2 d | ONLINE | fila=0
+  [A] h=30.2cm lux=48000 -> ATENCAO | corte em 1 d | ONLINE | fila=0
+  [A] h=30.3cm lux=48000 -> ATENCAO | corte em 1 d | ONLINE | fila=0
+  [A] h=29.7cm lux=48000 -> ATENCAO | corte em 2 d | ONLINE | fila=0
+  [A] h=29.7cm lux=48000 -> ATENCAO | corte em 2 d | ONLINE | fila=0
+  [A] h=29.9cm lux=48000 -> ATENCAO | corte em 2 d | ONLINE | fila=0
+  >> alternancias de estado em 10 ciclos: 0
+  -- agora 71 cm (altura 29), vindo de ATENCAO: histerese deve manter
+  [A] h=29.3cm lux=48000 -> ATENCAO | corte em 2 d | ONLINE | fila=0
+  [A] h=28.7cm lux=48000 -> NORMAL | corte em 2 d | ONLINE | fila=0
+    [EVENTO] ATENCAO -> NORMAL
+    [TX] A;28.7;NORMAL;2;2;0
+  [A] h=28.9cm lux=48000 -> NORMAL | corte em 2 d | ONLINE | fila=0
+
+========== S3  deve gerar alerta: alvo a 63 cm (altura 37 > LIM_CORTE) ==========
+  [A] h=37.3cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+    [EVENTO] NORMAL -> CORTE
+    [TX] A;37.3;CORTE;0;3;0
+  [A] h=37.1cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+  [A] h=37.2cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+
+========== S4a  repeticao: 5x o ciclo 82 cm -> 63 cm ==========
+  -- repeticao 1: afasta para 82 cm
+  [A] h=18.2cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+    [EVENTO] CORTE -> NORMAL
+    [TX] A;18.2;NORMAL;4;4;0
+  [A] h=18.3cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=17.9cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  -- repeticao 1: aproxima para 63 cm
+  [A] h=37.0cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+    [EVENTO] NORMAL -> CORTE
+    [TX] A;37.0;CORTE;0;5;0
+  >> repeticao 1 terminou em CORTE, seq=5
+  -- repeticao 2: afasta para 82 cm
+  [A] h=18.3cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+    [EVENTO] CORTE -> NORMAL
+    [TX] A;18.3;NORMAL;4;6;0
+  [A] h=18.0cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.4cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  -- repeticao 2: aproxima para 63 cm
+  [A] h=36.8cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+    [EVENTO] NORMAL -> CORTE
+    [TX] A;36.8;CORTE;0;7;0
+  >> repeticao 2 terminou em CORTE, seq=7
+  -- repeticao 3: afasta para 82 cm
+  [A] h=18.4cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+    [EVENTO] CORTE -> NORMAL
+    [TX] A;18.4;NORMAL;4;8;0
+  [A] h=17.9cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=17.8cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  -- repeticao 3: aproxima para 63 cm
+  [A] h=37.2cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+    [EVENTO] NORMAL -> CORTE
+    [TX] A;37.2;CORTE;0;9;0
+  >> repeticao 3 terminou em CORTE, seq=9
+  -- repeticao 4: afasta para 82 cm
+  [A] h=18.0cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+    [EVENTO] CORTE -> NORMAL
+    [TX] A;18.0;NORMAL;4;10;0
+  [A] h=18.0cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.2cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  -- repeticao 4: aproxima para 63 cm
+  [A] h=36.7cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+    [EVENTO] NORMAL -> CORTE
+    [TX] A;36.7;CORTE;0;11;0
+  >> repeticao 4 terminou em CORTE, seq=11
+  -- repeticao 5: afasta para 82 cm
+  [A] h=18.0cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+    [EVENTO] CORTE -> NORMAL
+    [TX] A;18.0;NORMAL;4;12;0
+  [A] h=18.2cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.2cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  -- repeticao 5: aproxima para 63 cm
+  [A] h=37.2cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+    [EVENTO] NORMAL -> CORTE
+    [TX] A;37.2;CORTE;0;13;0
+  >> repeticao 5 terminou em CORTE, seq=13
+
+========== S4b  dispersao: 10 leituras com alvo parado a 82 cm ==========
+  [A] h=18.2cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+    [EVENTO] CORTE -> NORMAL
+    [TX] A;18.2;NORMAL;4;14;0
+  [A] h=18.1cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.1cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=17.8cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=17.7cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.4cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.2cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.1cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.4cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=17.6cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  >> minimo 17.59  maximo 18.41  mediana 18.09  AMPLITUDE 0.83 cm
+  >> histerese do firmware: 1.0 cm -> amplitude menor que a histerese (adequada)
+
+========== S4c  pico de ruido: alvo a 82 cm com um eco espurio a 8 cm por ciclo ==========
+  [A] h=18.3cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.4cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  [A] h=18.1cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+  >> a mediana de 5 amostras descarta o pico: altura segue em ~18 cm
+
+========== S5a  adversa: leitura invalida (sensor apontado para o vazio) ==========
+  [A] h=18.1cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+       falhas consecutivas: 1/3
+  [A] h=18.1cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+       falhas consecutivas: 2/3
+  [A] h=nancm lux=48000 -> ERRO | corte em -1 d | ONLINE | fila=0
+    [EVENTO] NORMAL -> ERRO
+    [TX] A;-1.0;ERRO;-1;15;0
+       falhas consecutivas: 3/3
+  [A] h=nancm lux=48000 -> ERRO | corte em -1 d | ONLINE | fila=0
+       falhas consecutivas: 4/3
+  -- alvo recolocado a 82 cm
+  [A] h=17.7cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+    [EVENTO] ERRO -> NORMAL
+    [TX] A;17.7;NORMAL;4;16;0
+  [A] h=17.4cm lux=48000 -> NORMAL | corte em 4 d | ONLINE | fila=0
+
+========== S5b  adversa: perda de comunicacao ==========
+  -- rede cai
+  -- com a rede caida, alvo vai de 82 -> 70 -> 63 cm
+  [A] h=17.4cm lux=48000 -> NORMAL | corte em 4 d | WIFI-OFF | fila=0
+  [A] h=18.1cm lux=48000 -> NORMAL | corte em 4 d | WIFI-OFF | fila=0
+  [A] h=30.0cm lux=48000 -> ATENCAO | corte em 1 d | WIFI-OFF | fila=0
+    [EVENTO] NORMAL -> ATENCAO
+  [A] h=30.1cm lux=48000 -> ATENCAO | corte em 1 d | WIFI-OFF | fila=1
+  [A] h=36.8cm lux=48000 -> CORTE | corte em 0 d | WIFI-OFF | fila=1
+    [EVENTO] ATENCAO -> CORTE
+  [A] h=36.6cm lux=48000 -> CORTE | corte em 0 d | WIFI-OFF | fila=2
+  >> eventos guardados na fila: 2
+  -- rede volta
+    [TX] A;30.0;ATENCAO;1;17;6
+    [TX] A;36.8;CORTE;0;18;2
+  >> fila apos reconexao: 0
+
+========== S5c  adversa: luminosidade fora da faixa (LDR coberto) ==========
+  [A] h=18.2cm lux=300 -> NORMAL | corte em -1 d | ONLINE | fila=0
+    [EVENTO] CORTE -> NORMAL
+    [TX] A;18.2;NORMAL;-1;19;0
+  [A] h=18.1cm lux=300 -> NORMAL | corte em -1 d | ONLINE | fila=0
+  >> previsao suspensa (-1), classificacao da altura inalterada
+
+========== S6  persistencia: reinicio do no com estado CORTE gravado ==========
+  -- alvo a 63 cm ate entrar em CORTE
+  [A] h=37.1cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+    [EVENTO] NORMAL -> CORTE
+    [TX] A;37.1;CORTE;0;20;0
+  [A] h=36.8cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+  >> gravado na flash: estado=CORTE seq=20
+  -- reset do ESP32 (tecla 'r')
+  [BOOT] estado restaurado: CORTE | seq=20
+  -- primeiros ciclos depois do boot, alvo ainda a 63 cm
+  [A] h=36.8cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+  [A] h=37.1cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+  [A] h=37.0cm lux=48000 -> CORTE | corte em 0 d | ONLINE | fila=0
+  >> seq apos o boot: 20 (sem evento falso se nao houve [EVENTO] acima)

@@ -2,12 +2,8 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-// ===================== CONFIGURAÇÃO =====================
-
 const char* ssid = "";       // preencher antes de gravar
 const char* password = "";   // preencher antes de gravar
-
-// MQTT Broker
 const char* mqtt_broker = "broker.hivemq.com";
 const char* mqtt_username = "";
 const char* mqtt_password = "";
@@ -17,19 +13,13 @@ const int mqtt_port = 1883;
 #define TOPIC_RESUMO  TOPIC_BASE "/resumo"
 #define TOPIC_GW      TOPIC_BASE "/gateway/status"
 
-// Tópicos assinados (curinga: serve para qualquer ponto do trecho)
 const char* topic[] = {
   TOPIC_BASE "/+/estado",
   TOPIC_BASE "/+/status"
 };
 const int totalTopicos = sizeof(topic) / sizeof(topic[0]);
 
-#define LED_CORTE  14
-#define LED_FALHA  27
-
 const unsigned long RETENTAR_MS = 5000;
-
-// ===================== ESTADO =====================
 
 struct Ponto {
   char id;
@@ -42,7 +32,6 @@ struct Ponto {
 };
 Ponto pontos[] = {{'A'}, {'B'}};
 
-// Objetos
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -51,11 +40,8 @@ String resumoPublicado;
 bool reavaliar = true;
 unsigned long ultimaTentativa = 0;
 
-// Prototipos
 bool connectMQTT();
 void callback(char* topic, byte* payload, unsigned int length);
-
-// ===================== RECEPÇÃO =====================
 
 const char* estadoRede() {
   if (WiFi.status() != WL_CONNECTED) return "WIFI-OFF";
@@ -81,7 +67,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if (!pt) return;
 
   if (strstr(topic, "/status")) {
-    // "OFFLINE" chega pelo Last Will quando o nó cai sem avisar
     pt->online = strcmp(msg, "ONLINE") == 0;
     Serial.printf("[GW] Ponto %c: %s\n", pt->id, msg);
   } else {
@@ -89,7 +74,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
     float altura;
     int dias;
     unsigned seq, idade;
-    if (sscanf(msg, "%c;%f;%7[^;];%d;%*[^;];%*[^;];%u;%u",
+    
+    if (sscanf(msg, "%c;%f;%7[^;];%d;%u;%u",
                &id, &altura, estado, &dias, &seq, &idade) != 6) {
       Serial.printf("[GW] mensagem invalida descartada: %s\n", msg);
       return;
@@ -109,9 +95,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
   reavaliar = true;
 }
 
-// ===================== DECISÃO DO TRECHO =====================
-
-// Prioridade de atendimento: CORTE > ERRO > ATENCAO > OK
 String calcularResumo() {
   const char* prioridade[] = {"CORTE", "ERRO", "ATENCAO"};
   for (const char* e : prioridade) {
@@ -122,21 +105,10 @@ String calcularResumo() {
   return "TRECHO OK";
 }
 
-// ===================== SAÍDA =====================
-
 void avaliarTrecho() {
-  bool algumCorte = false, algumaFalha = false;
-  for (auto& p : pontos) {
-    algumCorte |= p.conhecido && strcmp(p.estado, "CORTE") == 0;
-    algumaFalha |= (p.conhecido && !p.online) || strcmp(p.estado, "ERRO") == 0;
-  }
-  digitalWrite(LED_CORTE, algumCorte);
-  digitalWrite(LED_FALHA, algumaFalha);
-
   String resumo = calcularResumo();
   Serial.printf("[GW] trecho: %s | rede %s\n", resumo.c_str(), estadoRede());
 
-  // Nuvem: só publica quando o resumo muda
   if (resumo != resumoPublicado && client.connected() &&
       client.publish(TOPIC_RESUMO, resumo.c_str(), true)) {
     resumoPublicado = resumo;
@@ -144,35 +116,25 @@ void avaliarTrecho() {
   }
 }
 
-// ===================== REDE =====================
-
-// Uma tentativa de conexao, com Last Will do proprio gateway
 bool connectMQTT() {
   client.setServer(mqtt_broker, mqtt_port);
   client.setCallback(callback);
 
   if (!client.connect(clientId.c_str(), mqtt_username, mqtt_password,
                       TOPIC_GW, 1, true, "OFFLINE")) {
-    Serial.print("Falha ao conectar: ");
-    Serial.println(client.state());
-    return 0;
+    return false;
   }
-  Serial.println("Exito na conexao:");
-  Serial.printf("Cliente %s conectado ao broker\n", clientId.c_str());
-
   client.publish(TOPIC_GW, "ONLINE", true);
-  // Os estados são "retained": ao (re)conectar, chega o último de cada ponto
   for (int i = 0; i < totalTopicos; i++) client.subscribe(topic[i], 1);
   resumoPublicado = "";
   reavaliar = true;
-  return 1;
+  return true;
 }
 
 void cuidarDaRede() {
   if (WiFi.status() != WL_CONNECTED) {
     if (millis() - ultimaTentativa < RETENTAR_MS) return;
     ultimaTentativa = millis();
-    Serial.printf("[REDE] sem WiFi (ssid=%s, status=%d), reconectando\n", ssid, WiFi.status());
     WiFi.reconnect();
     return;
   }
@@ -185,36 +147,11 @@ void cuidarDaRede() {
   client.loop();
 }
 
-// ===================== SETUP / LOOP =====================
-
 void setup() {
   Serial.begin(9600);
-  pinMode(LED_CORTE, OUTPUT);
-  pinMode(LED_FALHA, OUTPUT);
-  Serial.println("[GW] Gateway iniciando");
 
-  // Conectar
   WiFi.begin(ssid, password);
-
-  // Aguardando conexao
-  Serial.println();
-  Serial.print("Conectando");
-  for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("WiFi connected");
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("WiFi nao conectado: mantendo ultimos estados");
-    Serial.printf("[REDE] procurei \"%s\"; redes 2.4GHz visiveis:\n", ssid);
-    int n = WiFi.scanNetworks();
-    for (int i = 0; i < n; i++)
-      Serial.printf("  %s  %d dBm  ch%d\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i));
-    if (n == 0) Serial.println("  (nenhuma rede encontrada)");
-  }
+  for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) delay(500);
 
   clientId = String("edgeveg-gw-") + WiFi.macAddress();
   connectMQTT();
